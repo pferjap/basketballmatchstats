@@ -1,0 +1,39 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hoopanalytics-api
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:[REDACTED]@postgres:5432/basketball?schema=public
+    ports:
+      - '${PORT:-3000}:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: npm run start:dev
+    volumes:
+      - .:/app
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: hoopanalytics-postgres
+    ports:
+      - '${POSTGRES_HOST_PORT:-5433}:5432'
+    environment:
+      POSTGRES_DB: basketball
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d basketball']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

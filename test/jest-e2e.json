@@ -1,0 +1,14 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "testTimeout": 120000,
+  "maxWorkers": 1,
+  "globalSetup": "<rootDir>/setup/global-setup.ts",
+  "globalTeardown": "<rootDir>/setup/global-teardown.ts",
+  "setupFiles": ["<rootDir>/setup/use-test-db.ts"],
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  }
+}

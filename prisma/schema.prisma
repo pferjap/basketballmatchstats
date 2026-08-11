@@ -1,0 +1,170 @@
+// Prisma schema for HoopAnalytics backend.
+// Phase 1.2: base hierarchy Club -> Team -> Player (no complex logic yet).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  CLUB_ADMIN
+  COACH
+  STATISTICIAN
+  VIEWER
+}
+
+enum PlayerPosition {
+  POINT_GUARD
+  SHOOTING_GUARD
+  SMALL_FORWARD
+  POWER_FORWARD
+  CENTER
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  role         UserRole @default(VIEWER)
+  clubId       String?  @db.Uuid
+  refreshToken String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  club Club? @relation(fields: [clubId], references: [id], onDelete: SetNull)
+
+  @@index([email])
+  @@index([clubId])
+  @@map("users")
+}
+
+model Club {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  city      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teams Team[]
+  users User[]
+  matches Match[]
+
+  @@map("clubs")
+}
+
+model Team {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  clubId    String   @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  club    Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  players Player[]
+  homeMatches Match[] @relation("homeMatches")
+  awayMatches Match[] @relation("awayMatches")
+  events  Event[]
+
+  @@index([clubId])
+  @@map("teams")
+}
+
+model Player {
+  id           String          @id @default(uuid()) @db.Uuid
+  firstName    String
+  lastName     String
+  jerseyNumber Int?
+  position     PlayerPosition?
+  teamId       String          @db.Uuid
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  events Event[]
+
+  @@index([teamId])
+  @@map("players")
+}
+
+enum MatchStatus {
+  SCHEDULED
+  ONGOING
+  FINISHED
+}
+
+model Match {
+  id          String      @id @default(uuid()) @db.Uuid
+  clubId      String      @db.Uuid
+  homeTeamId  String      @db.Uuid
+  awayTeamId  String      @db.Uuid
+  status      MatchStatus @default(SCHEDULED)
+  scheduledAt DateTime
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  period      Int         @default(0)
+  gameClock   String      @default("00:00")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  club     Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  homeTeam Team @relation("homeMatches", fields: [homeTeamId], references: [id], onDelete: Restrict)
+  awayTeam Team @relation("awayMatches", fields: [awayTeamId], references: [id], onDelete: Restrict)
+  events   Event[]
+
+  @@index([clubId])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
+  @@index([status])
+  @@map("matches")
+}
+
+enum EventType {
+  POINTS_MADE
+  POINTS_MISSED
+  REBOUND_OFFENSIVE
+  REBOUND_DEFENSIVE
+  ASSIST
+  TURNOVER
+  STEAL
+  BLOCK
+  FOUL_PERSONAL
+  FOUL_TECHNICAL
+  FOUL_UNSPORTSMANLIKE
+  FOUL_DISQUALIFYING
+  FREE_THROW_AWARDED
+  SUBSTITUTION
+  TIMEOUT
+  QUARTER_START
+  QUARTER_END
+}
+
+model Event {
+  id          String    @id @default(uuid()) @db.Uuid
+  matchId     String    @db.Uuid
+  teamId      String    @db.Uuid
+  playerId    String?   @db.Uuid
+  eventType   EventType
+  period      Int
+  gameClock   String
+  coordinates Json?     @db.JsonB
+  metadata    Json?     @db.JsonB
+  isVoided    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  player Player? @relation(fields: [playerId], references: [id], onDelete: SetNull)
+
+  @@index([matchId, eventType])
+  @@index([matchId, playerId])
+  @@index([matchId, teamId])
+  @@index([matchId, period])
+  @@map("events")
+}

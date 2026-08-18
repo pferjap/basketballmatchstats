@@ -84,7 +84,6 @@ export class MatchController {
   }
 
   @Get(':id')
-  @TenantCheck('match')
   async getById(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<MatchResponseDto> {

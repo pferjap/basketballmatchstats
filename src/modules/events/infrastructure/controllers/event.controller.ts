@@ -47,7 +47,6 @@ export class EventController {
   }
 
   @Get('matches/:matchId/events')
-  @TenantCheck('match', 'matchId')
   async listByMatch(
     @Param('matchId', ParseUUIDPipe) matchId: string,
     @Query() query: ListMatchEventsQueryDto,

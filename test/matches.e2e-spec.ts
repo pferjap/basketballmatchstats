@@ -238,6 +238,59 @@ describe('Matches (E2E)', () => {
     });
   });
 
+  describe('PUT /matches/:id', () => {
+    it('should deny another clubs admin from editing', async () => {
+      await request(httpServer)
+        .put(`/matches/${matchId}`)
+        .set('Authorization', `Bearer ${clubBAdminToken}`)
+        .send({ scheduledAt: '2026-12-01T18:00:00Z' })
+        .expect(403);
+    });
+
+    it('should update scheduling details (CLUB_ADMIN)', async () => {
+      const res: SupertestResponse = await request(httpServer)
+        .put(`/matches/${matchId}`)
+        .set('Authorization', `Bearer ${clubAAdminToken}`)
+        .send({
+          homeTeamId: teamA2Id,
+          awayTeamId: teamA1Id,
+          scheduledAt: '2026-12-15T20:30:00Z',
+        })
+        .expect(200);
+
+      const body = res.body as ApiEnvelope<MatchResponse>;
+      expect(body.data.homeTeamId).toBe(teamA2Id);
+      expect(body.data.awayTeamId).toBe(teamA1Id);
+      expect(body.data.scheduledAt).toBe('2026-12-15T20:30:00.000Z');
+      expect(body.data.status).toBe('SCHEDULED');
+    });
+
+    it('should reject editing a non-SCHEDULED match', async () => {
+      const createRes: SupertestResponse = await request(httpServer)
+        .post('/matches')
+        .set('Authorization', `Bearer ${clubAAdminToken}`)
+        .send({
+          clubId: clubAId,
+          homeTeamId: teamA1Id,
+          awayTeamId: teamA2Id,
+          scheduledAt: '2026-11-05T18:00:00Z',
+        });
+      const ongoingMatchId = (createRes.body as ApiEnvelope<MatchResponse>).data
+        .id;
+
+      await request(httpServer)
+        .patch(`/matches/${ongoingMatchId}/start`)
+        .set('Authorization', `Bearer ${clubAAdminToken}`)
+        .expect(200);
+
+      await request(httpServer)
+        .put(`/matches/${ongoingMatchId}`)
+        .set('Authorization', `Bearer ${clubAAdminToken}`)
+        .send({ scheduledAt: '2026-12-20T18:00:00Z' })
+        .expect(403);
+    });
+  });
+
   describe('PATCH /matches/:id/start', () => {
     it('should start a SCHEDULED match', async () => {
       const res: SupertestResponse = await request(httpServer)

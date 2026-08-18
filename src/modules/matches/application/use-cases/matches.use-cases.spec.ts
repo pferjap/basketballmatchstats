@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { CreateMatchUseCase } from './create-match.use-case';
 import { GetMatchUseCase } from './get-match.use-case';
+import { UpdateMatchUseCase } from './update-match.use-case';
 import { StartMatchUseCase } from './start-match.use-case';
 import { FinishMatchUseCase } from './finish-match.use-case';
 import { ListMatchesUseCase } from './list-matches.use-case';
@@ -8,6 +9,7 @@ import { DeleteMatchUseCase } from './delete-match.use-case';
 import { MatchEntity } from '../../domain/entities/match.entity';
 import { MatchStatus } from '../../domain/enums/match-status.enum';
 import { MatchNotFoundException } from '../../domain/exceptions/match-not-found.exception';
+import { ForbiddenException } from '@nestjs/common';
 import { InvalidMatchTransitionException } from '../../domain/exceptions/invalid-match-transition.exception';
 import type { IMatchRepository } from '../../domain/interfaces/match.repository.interface';
 
@@ -198,6 +200,63 @@ describe('Match Use Cases', () => {
       await expect(useCase.execute('missing')).rejects.toThrow(
         MatchNotFoundException,
       );
+    });
+  });
+
+  describe('UpdateMatchUseCase', () => {
+    it('should update a scheduled match', async () => {
+      const useCase = new UpdateMatchUseCase(repository);
+      const scheduled = mockMatch({ status: MatchStatus.SCHEDULED });
+      const updated = mockMatch({ homeTeamId: 'team-3' });
+      repository.findById.mockResolvedValue(scheduled);
+      repository.update.mockResolvedValue(updated);
+
+      const result = await useCase.execute('match-1', {
+        homeTeamId: 'team-3',
+        awayTeamId: 'team-4',
+        scheduledAt: '2026-10-01T18:00:00Z',
+      });
+
+      expect(result).toEqual(updated);
+      expect(repository.update).toHaveBeenCalledWith('match-1', {
+        homeTeamId: 'team-3',
+        awayTeamId: 'team-4',
+        scheduledAt: expect.any(Date),
+      });
+    });
+
+    it('should update only provided fields', async () => {
+      const useCase = new UpdateMatchUseCase(repository);
+      repository.findById.mockResolvedValue(
+        mockMatch({ status: MatchStatus.SCHEDULED }),
+      );
+      repository.update.mockResolvedValue(mockMatch());
+
+      await useCase.execute('match-1', { awayTeamId: 'team-9' });
+      expect(repository.update).toHaveBeenCalledWith('match-1', {
+        awayTeamId: 'team-9',
+      });
+    });
+
+    it('should throw when match is not SCHEDULED', async () => {
+      const useCase = new UpdateMatchUseCase(repository);
+      repository.findById.mockResolvedValue(
+        mockMatch({ status: MatchStatus.ONGOING }),
+      );
+
+      await expect(
+        useCase.execute('match-1', { homeTeamId: 'team-3' }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(repository.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw MatchNotFoundException when not found', async () => {
+      const useCase = new UpdateMatchUseCase(repository);
+      repository.findById.mockResolvedValue(null);
+
+      await expect(
+        useCase.execute('missing', { homeTeamId: 'team-3' }),
+      ).rejects.toThrow(MatchNotFoundException);
     });
   });
 

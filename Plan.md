@@ -70,6 +70,47 @@ Para dar por concluida cada fase o sub-fase, se DEBE cumplir estrictamente lo si
 *   Validación fuerte del password (mínimo 8 caracteres, al menos una mayúscula, una minúscula y un número).
 *   Tras la creación, el administrador debe autenticarse vía `/auth/login` para obtener tokens JWT.
 
+### 2.5: API de Gestión de Usuarios y Privilegios (Alineada con la App Móvil)
+**Objetivo**: Publicar los endpoints del módulo `users` que la Fase 2.1 dejó especificados pero sin implementar, cerrando el bloqueo de las tareas **T-032** (bloque `features/users/`) y **T-034** del `docs/mobileapp/Plan_mobileapp.md` — Fase 9 "Registro de Usuarios y Gestión de Privilegios".
+
+> **Estado de partida (verificado en código)**: `POST /auth/register` ya existe, es `@Public()`, acepta únicamente `email`, `password`, `firstName`, `lastName`, fuerza `role = VIEWER` y `clubId = null` en el servidor, y devuelve `AuthResponseDto` (tokens + usuario), por lo que el alta deja la sesión iniciada sin paso de aprobación. Lo que falta es el lado de administración: el módulo `users` solo tiene entidad y repositorio (`UsersModule` no expone controlador ni casos de uso).
+
+**Modelo de privilegios (contrato de seguridad)**
+*   El rol por defecto de todo usuario auto-registrado es `VIEWER`, sin club (`clubId = null`). El cliente **nunca** envía rol ni club en el registro: el `RegisterDto` no los admite y es el servidor quien los impone.
+*   La elevación de privilegios se realiza exclusivamente por endpoints protegidos y auditables. Ocultar opciones por rol en la UI móvil es defensa en profundidad, no el control de acceso real.
+*   Conceder `SUPER_ADMIN` queda **fuera** de esta API: el primer superadministrador se crea con `POST /setup/init` (§2.4) y el endpoint de cambio de rol rechaza `SUPER_ADMIN` como valor destino (`400 Bad Request`).
+
+**Extensión del dominio**
+*   Ampliación de `IUserRepository` con:
+    *   `findAll(page, limit, filters?)` → `{ data: User[]; total: number }`, ordenado por `createdAt DESC` (altas más recientes primero), con filtro opcional `search` sobre `firstName`, `lastName` y `email` (case-insensitive), y filtro opcional por `clubId`.
+    *   `updateRole(userId, role)` y `updateClub(userId, clubId | null)`.
+*   Nuevo índice en `users(createdAt)` en `schema.prisma` para sostener el orden de la lista paginada.
+*   Casos de uso en `application/use-cases`: `ListUsersUseCase`, `GetUserUseCase`, `UpdateUserRoleUseCase`, `UpdateUserClubUseCase`.
+
+**Endpoints (contrato acordado con T-032)**
+*   `GET /users?page=&limit=&search=` — Lista paginada con el wrapper estándar `PaginatedResult`, más recientes primero. Restringido a `SUPER_ADMIN` (lista global) y `CLUB_ADMIN` (restringido a los usuarios de su propio club vía `TenantGuard`).
+*   `GET /users/:id` — Detalle de un usuario. Mismas restricciones de rol y tenancy.
+*   `PATCH /users/:id/role` — Body `{ "role": "STATISTICIAN" }`. Restringido a `SUPER_ADMIN` y `CLUB_ADMIN`; un `CLUB_ADMIN` solo puede actuar sobre usuarios de su club y no puede otorgar un rol superior al suyo.
+*   `PATCH /users/:id/club` — Body `{ "clubId": "…" }` (acepta `null` para desasociar). Restringido a `SUPER_ADMIN`, ya que mueve usuarios entre tenants. Necesario porque el registro deja `clubId = null` y roles como `STATISTICIAN` o `COACH` carecen de sentido sin club.
+
+**DTOs de salida**
+*   `UserResponseDto` expone `id`, `email`, `firstName`, `lastName`, `role`, `clubId`, `clubName`, `createdAt`. **Nunca** serializa `passwordHash` ni `refreshToken` (uso de `@Exclude`/`@Expose` de `class-transformer`).
+*   La inclusión de `createdAt` y `clubName` es un requisito explícito de la pantalla de T-034 ("Registrado hace 3 días", chip de club o "Sin club").
+*   Todos los campos documentados con `@ApiProperty()`.
+
+**Reglas de negocio y validación**
+*   `UpdateUserRoleDto` valida contra el enum `UserRole` con `@IsEnum`, excluyendo `SUPER_ADMIN`.
+*   Un usuario no puede modificar su propio rol (`403 Forbidden`), evitando auto-escalado incluso siendo `CLUB_ADMIN`.
+*   `UpdateUserClubDto` valida que el `clubId` exista antes de asignarlo (`404 Not Found` en caso contrario).
+*   Usuario inexistente → `UserNotFoundException` mapeada a `404 Not Found`.
+
+**Testing (DoD de la sub-fase)**
+*   Unit tests de los cuatro casos de uso, cubriendo las reglas de rechazo (auto-modificación, intento de otorgar `SUPER_ADMIN`, club inexistente).
+*   E2E (`test/users.e2e-spec.ts`) que cubre el flujo completo: registro público → el usuario nace `VIEWER` sin club → un `SUPER_ADMIN` lo lista, le asigna club y eleva su rol → el usuario obtiene tokens nuevos con el rol actualizado en el siguiente login.
+*   Test de seguridad: un `VIEWER` y un `COACH` reciben `403 Forbidden` en los cuatro endpoints; un `CLUB_ADMIN` del Club A recibe `403` al operar sobre un usuario del Club B.
+
+**Resultado**: La app móvil desbloquea el bloque `features/users/` de T-032 y la pantalla "Usuarios registrados" de T-034; el superadministrador puede ver las altas recientes, asignar club y elevar el rol de un usuario registrado.
+
 ---
 
 ## 🏀 Fase 3: Motor de Partidos y Eventos (El Core)

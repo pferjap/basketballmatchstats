@@ -337,11 +337,17 @@ describe('Events API (E2E)', () => {
       body.data.forEach((e) => expect(e.eventType).toBe('TIMEOUT'));
     });
 
-    it('should deny Club B admin from listing Club A events', async () => {
-      await request(httpServer)
+    it('should allow Club B admin to list Club A events (spectator access)', async () => {
+      // GET /matches/:matchId/events is intentionally not tenant-checked so
+      // viewers (who may belong to no club) can follow any match's event feed.
+      // Writes and single-event reads remain tenant-isolated.
+      const res: SupertestResponse = await request(httpServer)
         .get(`/matches/${ongoingMatchId}/events`)
         .set('Authorization', `Bearer ${clubBAdminToken}`)
-        .expect(403);
+        .expect(200);
+
+      const body = res.body as ApiEnvelope<EventResponse[]>;
+      expect(body.success).toBe(true);
     });
   });
 

@@ -65,21 +65,34 @@ export class MatchController {
     @Query() query: ListMatchesQueryDto,
     @CurrentUser() user: JwtPayload,
   ): Promise<PaginatedResult<MatchResponseDto>> {
-    const clubId =
-      user.role === UserRole.SUPER_ADMIN
-        ? undefined
-        : (user.clubId ?? undefined);
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
 
-    const { data, total, page, limit } = await this.listMatchesUseCase.execute({
+    // A non-SUPER_ADMIN user without a club is not tied to any match, so they
+    // must see an empty list rather than every match (an undefined clubId
+    // filter would otherwise return all matches).
+    if (user.role !== UserRole.SUPER_ADMIN && !user.clubId) {
+      return new PaginatedResult<MatchResponseDto>([], { page, limit, total: 0 });
+    }
+
+    const clubId =
+      user.role === UserRole.SUPER_ADMIN ? undefined : (user.clubId ?? undefined);
+
+    const {
+      data,
+      total,
+      page: resultPage,
+      limit: resultLimit,
+    } = await this.listMatchesUseCase.execute({
       clubId,
       status: query.status,
-      page: query.page ?? 1,
-      limit: query.limit ?? 20,
+      page,
+      limit,
     });
 
     return new PaginatedResult(
       data.map((match) => MatchMapper.toResponse(match)),
-      { page, limit, total },
+      { page: resultPage, limit: resultLimit, total },
     );
   }
 

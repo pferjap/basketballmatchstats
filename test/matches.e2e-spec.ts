@@ -217,6 +217,25 @@ describe('Matches (E2E)', () => {
       const body = res.body as ApiEnvelope<MatchResponse[]>;
       body.data.forEach((m) => expect(m.clubId).not.toBe(clubAId));
     });
+
+    it('should return an empty list for a user without a club', async () => {
+      const clublessCoach = await createTestUser(httpServer, prisma, {
+        email: `match-coach-noclub-${suffix}@test.com`,
+        firstName: 'Coach',
+        lastName: 'NoClub',
+        role: 'COACH',
+      });
+
+      const res: SupertestResponse = await request(httpServer)
+        .get('/matches')
+        .set('Authorization', `Bearer ${clublessCoach.accessToken}`)
+        .expect(200);
+
+      const body = res.body as ApiEnvelope<MatchResponse[]>;
+      expect(body.success).toBe(true);
+      expect(body.data).toHaveLength(0);
+      expect(body.meta?.total).toBe(0);
+    });
   });
 
   describe('GET /matches/:id', () => {
@@ -230,11 +249,17 @@ describe('Matches (E2E)', () => {
       expect(body.data.id).toBe(matchId);
     });
 
-    it('should deny access to another clubs match', async () => {
-      await request(httpServer)
+    it('should allow reading another clubs match by id (spectator access)', async () => {
+      // GET /matches/:id is intentionally not tenant-checked so viewers (who
+      // may belong to no club) can spectate any match. Write operations remain
+      // tenant-isolated (see PUT/start/finish/DELETE tests).
+      const res: SupertestResponse = await request(httpServer)
         .get(`/matches/${matchId}`)
         .set('Authorization', `Bearer ${clubBAdminToken}`)
-        .expect(403);
+        .expect(200);
+
+      const body = res.body as ApiEnvelope<MatchResponse>;
+      expect(body.data.id).toBe(matchId);
     });
   });
 

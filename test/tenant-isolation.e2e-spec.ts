@@ -179,11 +179,14 @@ describe('Tenant Isolation (E2E)', () => {
 
   // ─── Cross-tenant read (GET by ID) blocked ─────────────────
 
-  it('Club A admin cannot GET a specific team from Club B', async () => {
+  it('Club A admin can GET a specific team from Club B (spectator name resolution)', async () => {
+    // GET /teams/:id is intentionally not tenant-checked so viewers (who may
+    // belong to no club) can resolve team names for matches they spectate.
+    // Team writes remain tenant-isolated (see update/delete tests above).
     await request(httpServer)
       .get(`/teams/${clubBTeamId}`)
       .set('Authorization', `Bearer ${clubAAdminToken}`)
-      .expect(403);
+      .expect(200);
   });
 
   it('Club A admin cannot GET a specific player from Club B', async () => {

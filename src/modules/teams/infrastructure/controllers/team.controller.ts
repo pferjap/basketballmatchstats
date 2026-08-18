@@ -89,7 +89,6 @@ export class TeamController {
   }
 
   @Get(':id')
-  @TenantCheck('team')
   async getById(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<TeamResponseDto> {

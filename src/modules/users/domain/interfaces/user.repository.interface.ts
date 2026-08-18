@@ -12,6 +12,21 @@ export interface CreateUserData {
   clubId: string | null;
 }
 
+export interface UserFilters {
+  search?: string;
+  clubId?: string;
+}
+
+export interface UserWithClubName {
+  user: User;
+  clubName: string | null;
+}
+
+export interface FindAllResult {
+  data: UserWithClubName[];
+  total: number;
+}
+
 export interface IUserRepository {
   create(data: CreateUserData): Promise<User>;
   findById(id: string): Promise<User | null>;
@@ -21,4 +36,12 @@ export interface IUserRepository {
     userId: string,
     refreshTokenHash: string | null,
   ): Promise<void>;
+  findAllPaginated(
+    skip: number,
+    take: number,
+    filters?: UserFilters,
+  ): Promise<FindAllResult>;
+  findByIdWithClubName(id: string): Promise<UserWithClubName | null>;
+  updateRole(userId: string, role: UserRole): Promise<User>;
+  updateClub(userId: string, clubId: string | null): Promise<User>;
 }

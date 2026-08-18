@@ -42,6 +42,7 @@ model User {
 
   @@index([email])
   @@index([clubId])
+  @@index([createdAt])
   @@map("users")
 }
 

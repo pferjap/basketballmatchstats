@@ -4,7 +4,7 @@ import { SetMetadata } from '@nestjs/common';
  * Resource types that TenantGuard can resolve ownership for.
  * Each corresponds to a different lookup strategy to find the owning clubId.
  */
-export type TenantResourceType = 'club' | 'team' | 'player' | 'match' | 'event';
+export type TenantResourceType = 'club' | 'team' | 'player' | 'match' | 'event' | 'user';
 
 export interface TenantCheckMetadata {
   /** The route param name holding the resource ID (e.g., 'id'). */

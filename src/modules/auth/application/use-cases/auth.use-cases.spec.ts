@@ -35,6 +35,10 @@ function buildUserRepository(): jest.Mocked<IUserRepository> {
     findByEmail: jest.fn(),
     existsByRole: jest.fn(),
     updateRefreshToken: jest.fn(),
+    findAllPaginated: jest.fn(),
+    findByIdWithClubName: jest.fn(),
+    updateRole: jest.fn(),
+    updateClub: jest.fn(),
   };
 }
 

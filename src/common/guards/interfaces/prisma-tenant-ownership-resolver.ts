@@ -22,6 +22,8 @@ export class PrismaTenantOwnershipResolver implements ITenantOwnershipResolver {
         return this.resolveMatchOwnership(resourceId);
       case 'event':
         return this.resolveEventOwnership(resourceId);
+      case 'user':
+        return this.resolveUserOwnership(resourceId);
     }
   }
 
@@ -70,5 +72,14 @@ export class PrismaTenantOwnershipResolver implements ITenantOwnershipResolver {
     });
 
     return event ? event.match.clubId : null;
+  }
+
+  private async resolveUserOwnership(userId: string): Promise<string | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { clubId: true },
+    });
+
+    return user ? user.clubId : null;
   }
 }

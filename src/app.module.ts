@@ -18,6 +18,7 @@ import { MatchesModule } from './modules/matches/matches.module';
 import { PlayersModule } from './modules/players/players.module';
 import { SetupModule } from './modules/setup/setup.module';
 import { TeamsModule } from './modules/teams/teams.module';
+import { UsersModule } from './modules/users/users.module';
 import { WebSocketModule } from './modules/websocket/websocket.module';
 
 @Module({
@@ -36,6 +37,7 @@ import { WebSocketModule } from './modules/websocket/websocket.module';
     EventsModule,
     SetupModule,
     WebSocketModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [

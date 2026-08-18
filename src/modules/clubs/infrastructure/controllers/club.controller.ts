@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -8,7 +9,10 @@ import {
   Post,
   Put,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
 import { PaginationQueryDto } from '../../../../common/dtos/pagination.query.dto';
 import { PaginatedResult } from '../../../../common/pagination/paginated-result';
@@ -24,6 +28,10 @@ import { DeleteClubUseCase } from '../../application/use-cases/delete-club.use-c
 import { GetClubUseCase } from '../../application/use-cases/get-club.use-case';
 import { ListClubsUseCase } from '../../application/use-cases/list-clubs.use-case';
 import { UpdateClubUseCase } from '../../application/use-cases/update-club.use-case';
+import { UploadClubLogoUseCase } from '../../application/use-cases/upload-club-logo.use-case';
+import { DeleteClubLogoUseCase } from '../../application/use-cases/delete-club-logo.use-case';
+
+const MAX_FILE_SIZE = 2 * 1024 * 1024;
 
 @Controller('clubs')
 export class ClubController {
@@ -33,6 +41,8 @@ export class ClubController {
     private readonly listClubsUseCase: ListClubsUseCase,
     private readonly updateClubUseCase: UpdateClubUseCase,
     private readonly deleteClubUseCase: DeleteClubUseCase,
+    private readonly uploadClubLogoUseCase: UploadClubLogoUseCase,
+    private readonly deleteClubLogoUseCase: DeleteClubLogoUseCase,
   ) {}
 
   @Post()
@@ -92,6 +102,32 @@ export class ClubController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<{ id: string }> {
     await this.deleteClubUseCase.execute(id);
+
+    return { id };
+  }
+
+  @Post(':id/logo')
+  @Roles(UserRole.SUPER_ADMIN)
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE } }))
+  async uploadLogo(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+  ): Promise<ClubResponseDto> {
+    if (!file) {
+      throw new BadRequestException('File is required.');
+    }
+
+    const club = await this.uploadClubLogoUseCase.execute(id, file.buffer);
+
+    return ClubMapper.toResponse(club);
+  }
+
+  @Delete(':id/logo')
+  @Roles(UserRole.SUPER_ADMIN)
+  async deleteLogo(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<{ id: string }> {
+    await this.deleteClubLogoUseCase.execute(id);
 
     return { id };
   }

@@ -2,6 +2,7 @@ export interface TeamProperties {
   id: string;
   name: string;
   clubId: string;
+  logoUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -14,6 +15,7 @@ export class Team {
   readonly id: string;
   readonly name: string;
   readonly clubId: string;
+  readonly logoUrl: string | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 
@@ -21,6 +23,7 @@ export class Team {
     this.id = properties.id;
     this.name = properties.name;
     this.clubId = properties.clubId;
+    this.logoUrl = properties.logoUrl;
     this.createdAt = properties.createdAt;
     this.updatedAt = properties.updatedAt;
   }

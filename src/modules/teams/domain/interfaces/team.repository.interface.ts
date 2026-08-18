@@ -28,6 +28,7 @@ export interface ITeamRepository {
   findMany(params: TeamFindManyParams): Promise<Team[]>;
   count(clubId?: string): Promise<number>;
   update(id: string, data: UpdateTeamData): Promise<Team>;
+  updateLogoUrl(id: string, logoUrl: string | null): Promise<Team>;
   delete(id: string): Promise<void>;
   existsById(id: string): Promise<boolean>;
 }

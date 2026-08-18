@@ -5,6 +5,8 @@ import { DeleteClubUseCase } from './application/use-cases/delete-club.use-case'
 import { GetClubUseCase } from './application/use-cases/get-club.use-case';
 import { ListClubsUseCase } from './application/use-cases/list-clubs.use-case';
 import { UpdateClubUseCase } from './application/use-cases/update-club.use-case';
+import { UploadClubLogoUseCase } from './application/use-cases/upload-club-logo.use-case';
+import { DeleteClubLogoUseCase } from './application/use-cases/delete-club-logo.use-case';
 import { ClubController } from './infrastructure/controllers/club.controller';
 import { PrismaClubRepository } from './infrastructure/repositories/prisma-club.repository';
 
@@ -16,6 +18,8 @@ import { PrismaClubRepository } from './infrastructure/repositories/prisma-club.
     ListClubsUseCase,
     UpdateClubUseCase,
     DeleteClubUseCase,
+    UploadClubLogoUseCase,
+    DeleteClubLogoUseCase,
     { provide: CLUB_REPOSITORY, useClass: PrismaClubRepository },
   ],
   exports: [CLUB_REPOSITORY],

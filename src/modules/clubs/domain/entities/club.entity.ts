@@ -2,6 +2,7 @@ export interface ClubProperties {
   id: string;
   name: string;
   city: string | null;
+  logoUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -14,6 +15,7 @@ export class Club {
   readonly id: string;
   readonly name: string;
   readonly city: string | null;
+  readonly logoUrl: string | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 
@@ -21,6 +23,7 @@ export class Club {
     this.id = properties.id;
     this.name = properties.name;
     this.city = properties.city;
+    this.logoUrl = properties.logoUrl;
     this.createdAt = properties.createdAt;
     this.updatedAt = properties.updatedAt;
   }

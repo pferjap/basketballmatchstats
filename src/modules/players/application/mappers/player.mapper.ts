@@ -10,6 +10,7 @@ export class PlayerMapper {
       jerseyNumber: player.jerseyNumber,
       position: player.position,
       teamId: player.teamId,
+      photoUrl: player.photoUrl,
       createdAt: player.createdAt.toISOString(),
       updatedAt: player.updatedAt.toISOString(),
     };

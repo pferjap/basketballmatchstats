@@ -8,6 +8,7 @@ export class TeamMapper {
       id: team.id,
       name: team.name,
       clubId: team.clubId,
+      logoUrl: team.logoUrl,
       createdAt: team.createdAt.toISOString(),
       updatedAt: team.updatedAt.toISOString(),
     };

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -8,7 +9,10 @@ import {
   Post,
   Put,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
 import { Roles } from '../../../../common/decorators/roles.decorator';
 import { TenantCheck } from '../../../../common/decorators/tenant-check.decorator';
@@ -25,6 +29,10 @@ import { DeletePlayerUseCase } from '../../application/use-cases/delete-player.u
 import { GetPlayerUseCase } from '../../application/use-cases/get-player.use-case';
 import { ListPlayersUseCase } from '../../application/use-cases/list-players.use-case';
 import { UpdatePlayerUseCase } from '../../application/use-cases/update-player.use-case';
+import { UploadPlayerPhotoUseCase } from '../../application/use-cases/upload-player-photo.use-case';
+import { DeletePlayerPhotoUseCase } from '../../application/use-cases/delete-player-photo.use-case';
+
+const MAX_FILE_SIZE = 2 * 1024 * 1024;
 
 @Controller('players')
 export class PlayerController {
@@ -34,6 +42,8 @@ export class PlayerController {
     private readonly listPlayersUseCase: ListPlayersUseCase,
     private readonly updatePlayerUseCase: UpdatePlayerUseCase,
     private readonly deletePlayerUseCase: DeletePlayerUseCase,
+    private readonly uploadPlayerPhotoUseCase: UploadPlayerPhotoUseCase,
+    private readonly deletePlayerPhotoUseCase: DeletePlayerPhotoUseCase,
   ) {}
 
   @Post()
@@ -102,6 +112,34 @@ export class PlayerController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<{ id: string }> {
     await this.deletePlayerUseCase.execute(id);
+
+    return { id };
+  }
+
+  @Post(':id/photo')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.CLUB_ADMIN, UserRole.COACH)
+  @TenantCheck('player')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE } }))
+  async uploadPhoto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+  ): Promise<PlayerResponseDto> {
+    if (!file) {
+      throw new BadRequestException('File is required.');
+    }
+
+    const player = await this.uploadPlayerPhotoUseCase.execute(id, file.buffer);
+
+    return PlayerMapper.toResponse(player);
+  }
+
+  @Delete(':id/photo')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.CLUB_ADMIN, UserRole.COACH)
+  @TenantCheck('player')
+  async deletePhoto(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<{ id: string }> {
+    await this.deletePlayerPhotoUseCase.execute(id);
 
     return { id };
   }

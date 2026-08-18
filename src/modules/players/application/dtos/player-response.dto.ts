@@ -5,6 +5,7 @@ export class PlayerResponseDto {
   jerseyNumber!: number | null;
   position!: string | null;
   teamId!: string;
+  photoUrl!: string | null;
   createdAt!: string;
   updatedAt!: string;
 }

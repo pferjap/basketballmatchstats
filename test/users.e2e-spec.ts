@@ -31,9 +31,12 @@ interface UserResponse {
   createdAt: string;
 }
 
-interface PaginatedUsers {
+interface PaginatedEnvelope {
+  success: boolean;
+  statusCode: number;
   data: UserResponse[];
   meta: { page: number; limit: number; total: number };
+  timestamp: string;
 }
 
 describe('Users (E2E)', () => {
@@ -205,10 +208,10 @@ describe('Users (E2E)', () => {
       .set('Authorization', `Bearer ${superAdminToken}`)
       .expect(200);
 
-    const body = res.body as ApiEnvelope<PaginatedUsers>;
+    const body = res.body as PaginatedEnvelope;
     expect(body.success).toBe(true);
-    expect(body.data.data.length).toBeGreaterThan(0);
-    expect(body.data.meta.total).toBeGreaterThan(0);
+    expect(body.data.length).toBeGreaterThan(0);
+    expect(body.meta.total).toBeGreaterThan(0);
   });
 
   it('SUPER_ADMIN can list users with search filter', async () => {
@@ -218,8 +221,8 @@ describe('Users (E2E)', () => {
       .set('Authorization', `Bearer ${superAdminToken}`)
       .expect(200);
 
-    const body = res.body as ApiEnvelope<PaginatedUsers>;
-    const emails = body.data.data.map((u) => u.email);
+    const body = res.body as PaginatedEnvelope;
+    const emails = body.data.map((u) => u.email);
     expect(emails).toContain(targetUserEmail);
   });
 
@@ -342,8 +345,8 @@ describe('Users (E2E)', () => {
       .set('Authorization', `Bearer ${clubAdminAToken}`)
       .expect(200);
 
-    const body = res.body as ApiEnvelope<PaginatedUsers>;
-    const clubIds = body.data.data.map((u) => u.clubId);
+    const body = res.body as PaginatedEnvelope;
+    const clubIds = body.data.map((u) => u.clubId);
     expect(clubIds.every((cid) => cid === clubAId)).toBe(true);
   });
 
@@ -410,9 +413,9 @@ describe('Users (E2E)', () => {
       .set('Authorization', `Bearer ${superAdminToken}`)
       .expect(200);
 
-    const body = res.body as ApiEnvelope<PaginatedUsers>;
-    expect(body.data.data.length).toBeLessThanOrEqual(2);
-    expect(body.data.meta.page).toBe(1);
-    expect(body.data.meta.limit).toBe(2);
+    const body = res.body as PaginatedEnvelope;
+    expect(body.data.length).toBeLessThanOrEqual(2);
+    expect(body.meta.page).toBe(1);
+    expect(body.meta.limit).toBe(2);
   });
 });

@@ -8,6 +8,7 @@ export class ClubMapper {
       id: club.id,
       name: club.name,
       city: club.city,
+      logoUrl: club.logoUrl,
       createdAt: club.createdAt.toISOString(),
       updatedAt: club.updatedAt.toISOString(),
     };

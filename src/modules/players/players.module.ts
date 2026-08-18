@@ -6,6 +6,8 @@ import { DeletePlayerUseCase } from './application/use-cases/delete-player.use-c
 import { GetPlayerUseCase } from './application/use-cases/get-player.use-case';
 import { ListPlayersUseCase } from './application/use-cases/list-players.use-case';
 import { UpdatePlayerUseCase } from './application/use-cases/update-player.use-case';
+import { UploadPlayerPhotoUseCase } from './application/use-cases/upload-player-photo.use-case';
+import { DeletePlayerPhotoUseCase } from './application/use-cases/delete-player-photo.use-case';
 import { PlayerController } from './infrastructure/controllers/player.controller';
 import { PrismaPlayerRepository } from './infrastructure/repositories/prisma-player.repository';
 
@@ -18,6 +20,8 @@ import { PrismaPlayerRepository } from './infrastructure/repositories/prisma-pla
     ListPlayersUseCase,
     UpdatePlayerUseCase,
     DeletePlayerUseCase,
+    UploadPlayerPhotoUseCase,
+    DeletePlayerPhotoUseCase,
     { provide: PLAYER_REPOSITORY, useClass: PrismaPlayerRepository },
   ],
 })

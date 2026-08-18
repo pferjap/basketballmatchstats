@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -9,7 +10,10 @@ import {
   Post,
   Put,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
 import { Roles } from '../../../../common/decorators/roles.decorator';
 import { TenantCheck } from '../../../../common/decorators/tenant-check.decorator';
@@ -26,6 +30,10 @@ import { DeleteTeamUseCase } from '../../application/use-cases/delete-team.use-c
 import { GetTeamUseCase } from '../../application/use-cases/get-team.use-case';
 import { ListTeamsUseCase } from '../../application/use-cases/list-teams.use-case';
 import { UpdateTeamUseCase } from '../../application/use-cases/update-team.use-case';
+import { UploadTeamLogoUseCase } from '../../application/use-cases/upload-team-logo.use-case';
+import { DeleteTeamLogoUseCase } from '../../application/use-cases/delete-team-logo.use-case';
+
+const MAX_FILE_SIZE = 2 * 1024 * 1024;
 
 @Controller('teams')
 export class TeamController {
@@ -35,6 +43,8 @@ export class TeamController {
     private readonly listTeamsUseCase: ListTeamsUseCase,
     private readonly updateTeamUseCase: UpdateTeamUseCase,
     private readonly deleteTeamUseCase: DeleteTeamUseCase,
+    private readonly uploadTeamLogoUseCase: UploadTeamLogoUseCase,
+    private readonly deleteTeamLogoUseCase: DeleteTeamLogoUseCase,
   ) {}
 
   @Post()
@@ -107,6 +117,34 @@ export class TeamController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<{ id: string }> {
     await this.deleteTeamUseCase.execute(id);
+
+    return { id };
+  }
+
+  @Post(':id/logo')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.CLUB_ADMIN)
+  @TenantCheck('team')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE } }))
+  async uploadLogo(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+  ): Promise<TeamResponseDto> {
+    if (!file) {
+      throw new BadRequestException('File is required.');
+    }
+
+    const team = await this.uploadTeamLogoUseCase.execute(id, file.buffer);
+
+    return TeamMapper.toResponse(team);
+  }
+
+  @Delete(':id/logo')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.CLUB_ADMIN)
+  @TenantCheck('team')
+  async deleteLogo(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<{ id: string }> {
+    await this.deleteTeamLogoUseCase.execute(id);
 
     return { id };
   }

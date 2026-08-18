@@ -9,6 +9,7 @@ import { TENANT_OWNERSHIP_RESOLVER } from './common/guards/interfaces/tenant-own
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TenantGuard } from './common/guards/tenant.guard';
+import { StorageModule } from './common/storage/storage.module';
 import { envValidationSchema } from './config/env.validation';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -29,6 +30,7 @@ import { WebSocketModule } from './modules/websocket/websocket.module';
     }),
     EventEmitterModule.forRoot(),
     DatabaseModule,
+    StorageModule,
     AuthModule,
     ClubsModule,
     TeamsModule,

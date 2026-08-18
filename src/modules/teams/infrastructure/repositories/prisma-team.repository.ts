@@ -61,6 +61,15 @@ export class PrismaTeamRepository implements ITeamRepository {
     return count > 0;
   }
 
+  async updateLogoUrl(id: string, logoUrl: string | null): Promise<Team> {
+    const team = await this.prisma.team.update({
+      where: { id },
+      data: { logoUrl },
+    });
+
+    return this.toDomain(team);
+  }
+
   private buildWhere(clubId?: string): Prisma.TeamWhereInput | undefined {
     return clubId ? { clubId } : undefined;
   }
@@ -70,6 +79,7 @@ export class PrismaTeamRepository implements ITeamRepository {
       id: team.id,
       name: team.name,
       clubId: team.clubId,
+      logoUrl: team.logoUrl,
       createdAt: team.createdAt,
       updatedAt: team.updatedAt,
     });

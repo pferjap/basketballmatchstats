@@ -13,6 +13,7 @@ export interface PlayerProperties {
   jerseyNumber: number | null;
   position: PlayerPosition | null;
   teamId: string;
+  photoUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -24,6 +25,7 @@ export class Player {
   readonly jerseyNumber: number | null;
   readonly position: PlayerPosition | null;
   readonly teamId: string;
+  readonly photoUrl: string | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 
@@ -34,6 +36,7 @@ export class Player {
     this.jerseyNumber = properties.jerseyNumber;
     this.position = properties.position;
     this.teamId = properties.teamId;
+    this.photoUrl = properties.photoUrl;
     this.createdAt = properties.createdAt;
     this.updatedAt = properties.updatedAt;
   }

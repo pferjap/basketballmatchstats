@@ -64,11 +64,21 @@ export class PrismaClubRepository implements IClubRepository {
     return count > 0;
   }
 
+  async updateLogoUrl(id: string, logoUrl: string | null): Promise<Club> {
+    const club = await this.prisma.club.update({
+      where: { id },
+      data: { logoUrl },
+    });
+
+    return this.toDomain(club);
+  }
+
   private toDomain(club: PrismaClub): Club {
     return new Club({
       id: club.id,
       name: club.name,
       city: club.city,
+      logoUrl: club.logoUrl,
       createdAt: club.createdAt,
       updatedAt: club.updatedAt,
     });

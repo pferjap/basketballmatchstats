@@ -29,6 +29,7 @@ export interface IClubRepository {
   findMany(params: ClubPaginationParams): Promise<Club[]>;
   count(clubId?: string): Promise<number>;
   update(id: string, data: UpdateClubData): Promise<Club>;
+  updateLogoUrl(id: string, logoUrl: string | null): Promise<Club>;
   delete(id: string): Promise<void>;
   existsById(id: string): Promise<boolean>;
 }

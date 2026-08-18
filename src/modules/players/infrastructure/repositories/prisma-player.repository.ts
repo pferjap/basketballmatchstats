@@ -78,6 +78,15 @@ export class PrismaPlayerRepository implements IPlayerRepository {
     return count > 0;
   }
 
+  async updatePhotoUrl(id: string, photoUrl: string | null): Promise<Player> {
+    const player = await this.prisma.player.update({
+      where: { id },
+      data: { photoUrl },
+    });
+
+    return this.toDomain(player);
+  }
+
   private buildWhere(
     teamId?: string,
     clubId?: string,
@@ -102,6 +111,7 @@ export class PrismaPlayerRepository implements IPlayerRepository {
       jerseyNumber: player.jerseyNumber,
       position: player.position as PlayerPosition | null,
       teamId: player.teamId,
+      photoUrl: player.photoUrl,
       createdAt: player.createdAt,
       updatedAt: player.updatedAt,
     });

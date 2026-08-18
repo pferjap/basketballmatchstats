@@ -31,6 +31,7 @@ export interface IPlayerRepository {
   count(teamId?: string): Promise<number>;
   countByClub(clubId: string, teamId?: string): Promise<number>;
   update(id: string, data: UpdatePlayerData): Promise<Player>;
+  updatePhotoUrl(id: string, photoUrl: string | null): Promise<Player>;
   delete(id: string): Promise<void>;
   existsById(id: string): Promise<boolean>;
 }

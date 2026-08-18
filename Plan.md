@@ -39,6 +39,102 @@ Para dar por concluida cada fase o sub-fase, se DEBE cumplir estrictamente lo si
 *   Implementación de Unit Tests con Jest para los Casos de Uso.
 *   Configuración de Testcontainers e implementación del primer E2E Test (`Supertest`) validando el flujo completo de creación.
 
+### 1.5: Logos e Imágenes de Entidades (Clubs, Equipos, Jugadores)
+**Objetivo**: Permitir que cada Club, Equipo y Jugador tenga una imagen (logo o foto) asociada, subida como parte de su gestión, con límites de peso, formato y dimensiones optimizados para consumo desde aplicaciones móviles y web.
+
+> **Estado de partida (verificado en código)**: Las entidades `Club`, `Team` y `Player` no poseen ningún campo de imagen. No existe código de subida de archivos, procesamiento de imágenes ni configuración de Multer en el proyecto. La dependencia `@nestjs/platform-express` ya está instalada (soporte base para Multer).
+
+**Estrategia de almacenamiento (contrato desacoplado)**
+*   Definición de una interfaz de dominio `IFileStorageService` en `src/common/storage/interfaces/file-storage.interface.ts` con los métodos:
+    *   `upload(file: Buffer, path: string): Promise<string>` — persiste el archivo y devuelve la URL/ruta pública.
+    *   `delete(path: string): Promise<void>` — elimina un archivo previamente almacenado.
+*   Implementación inicial `LocalFileStorageService` en `src/common/storage/local-file-storage.service.ts` que escribe en `uploads/` dentro del directorio de trabajo. Los archivos se sirven como estáticos vía `app.useStaticAssets()` en `main.ts`.
+*   Token de DI: `FILE_STORAGE_SERVICE` (Symbol), registrado en un `StorageModule` global. La implementación es intercambiable por S3, Azure Blob o Supabase Storage en fases futuras sin tocar casos de uso ni controladores.
+*   Estructura de directorios en disco: `uploads/clubs/<clubId>.<ext>`, `uploads/teams/<teamId>.<ext>`, `uploads/players/<playerId>.<ext>`. Cada entidad tiene como máximo un archivo; subir uno nuevo sobreescribe el anterior.
+
+**Límites de subida (optimización mobile/web)**
+*   **Tamaño máximo del archivo original**: 2 MB. Rechazado por Multer antes de llegar al use-case (`PayloadTooLargeException`, HTTP `413`).
+*   **Formatos aceptados**: JPEG, PNG y WebP exclusivamente. Validación por MIME type real del buffer (no por extensión) usando `file-type` (npm). Cualquier otro formato → `BadRequestException` con mensaje descriptivo.
+*   **Dimensiones máximas de salida**: Toda imagen se redimensiona a un máximo de **512×512 px** manteniendo la relación de aspecto (fit `inside`). Imágenes menores no se amplían.
+*   **Formato de salida normalizado**: Todas las imágenes se convierten a **WebP** con calidad 80, independientemente del formato de entrada. Esto reduce el peso medio un ~30% respecto a JPEG equivalente.
+*   **Procesamiento**: Se utiliza la librería `sharp` (npm). El pipeline de procesamiento (`ImageProcessingService`) reside en `src/common/storage/image-processing.service.ts`, expone un método `optimize(buffer: Buffer): Promise<Buffer>` y es inyectable con tests unitarios independientes.
+
+**Extensión del esquema Prisma**
+*   Nuevas columnas nullable en `schema.prisma`:
+    *   `Club`: `logoUrl  String?`
+    *   `Team`: `logoUrl  String?`
+    *   `Player`: `photoUrl String?`
+*   Migración de Prisma: `add-entity-images`. Las columnas son nullable para no romper datos existentes ni el flujo de creación (la imagen se sube opcionalmente tras crear la entidad).
+
+**Extensión de las entidades de dominio**
+*   `ClubProperties` y `Club`: nuevo campo `logoUrl: string | null`.
+*   `TeamProperties` y `Team`: nuevo campo `logoUrl: string | null`.
+*   `PlayerProperties` y `Player`: nuevo campo `photoUrl: string | null`.
+
+**Extensión de las interfaces de repositorio**
+*   `IClubRepository`: nuevo método `updateLogoUrl(id: string, logoUrl: string | null): Promise<Club>`.
+*   `ITeamRepository`: nuevo método `updateLogoUrl(id: string, logoUrl: string | null): Promise<Team>`.
+*   `IPlayerRepository`: nuevo método `updatePhotoUrl(id: string, photoUrl: string | null): Promise<Player>`.
+*   Las implementaciones Prisma (`PrismaClubRepository`, etc.) implementan el método con un `prisma.<entity>.update({ where: { id }, data: { logoUrl } })`.
+
+**Extensión de DTOs de respuesta**
+*   `ClubResponseDto`: nuevo campo `logoUrl: string | null`.
+*   `TeamResponseDto`: nuevo campo `logoUrl: string | null`.
+*   `PlayerResponseDto`: nuevo campo `photoUrl: string | null`.
+*   Los mappers (`ClubMapper`, `TeamMapper`, `PlayerMapper`) se actualizan para incluir el nuevo campo en `toResponse()`.
+*   Los DTOs de creación (`CreateClubDto`, `CreateTeamDto`, `CreatePlayerDto`) **no cambian**: la imagen se sube en un endpoint separado tras la creación.
+
+**Nuevos casos de uso (capa `application/use-cases`)**
+*   `UploadClubLogoUseCase`: recibe `(clubId, fileBuffer)`. Verifica que el club existe (→ `ClubNotFoundException`). Invoca `ImageProcessingService.optimize()`, luego `FileStorageService.upload()`, finalmente `ClubRepository.updateLogoUrl()`. Devuelve el `Club` actualizado.
+*   `DeleteClubLogoUseCase`: recibe `(clubId)`. Verifica existencia. Invoca `FileStorageService.delete()` y `ClubRepository.updateLogoUrl(id, null)`.
+*   `UploadTeamLogoUseCase` / `DeleteTeamLogoUseCase`: análogos para equipos.
+*   `UploadPlayerPhotoUseCase` / `DeletePlayerPhotoUseCase`: análogos para jugadores (campo `photoUrl`).
+
+**Nuevos endpoints (capa `infrastructure/controllers`)**
+
+| Método | Ruta | Roles | Descripción |
+|--------|------|-------|-------------|
+| `POST` | `/clubs/:id/logo` | `SUPER_ADMIN` | Sube/reemplaza el logo del club. Body: `multipart/form-data`, campo `file`. |
+| `DELETE` | `/clubs/:id/logo` | `SUPER_ADMIN` | Elimina el logo del club. |
+| `POST` | `/teams/:id/logo` | `SUPER_ADMIN`, `CLUB_ADMIN` | Sube/reemplaza el logo del equipo. `@TenantCheck('team')`. |
+| `DELETE` | `/teams/:id/logo` | `SUPER_ADMIN`, `CLUB_ADMIN` | Elimina el logo del equipo. `@TenantCheck('team')`. |
+| `POST` | `/players/:id/photo` | `SUPER_ADMIN`, `CLUB_ADMIN`, `COACH` | Sube/reemplaza la foto del jugador. `@TenantCheck('player')`. |
+| `DELETE` | `/players/:id/photo` | `SUPER_ADMIN`, `CLUB_ADMIN`, `COACH` | Elimina la foto del jugador. `@TenantCheck('player')`. |
+
+*   Los endpoints de subida usan `@UseInterceptors(FileInterceptor('file'))` de `@nestjs/platform-express` con un `MulterOptions` que limita `fileSize: 2 * 1024 * 1024` (2 MB).
+*   El decorador `@UploadedFile(new ParseFilePipe({ ... }))` valida presencia del archivo. La validación de MIME type se realiza en el use-case sobre el buffer real (no confiar en el MIME que envía el cliente).
+*   Los endpoints de subida devuelven el `<Entity>ResponseDto` actualizado con la nueva URL del logo/foto.
+*   Los endpoints de eliminación devuelven `{ id: string }`, coherente con el patrón de DELETE existente.
+
+**Servicio de archivos estáticos**
+*   Modificación de `src/main.ts` para registrar `app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads' })`, sirviendo los archivos subidos en rutas como `/uploads/clubs/<id>.webp`.
+*   La URL almacenada en BD es relativa (`/uploads/clubs/<id>.webp`), de modo que el frontend puede prefijar el host del API para construir la URL absoluta. Esto facilita la migración futura a CDN o almacenamiento en la nube (solo cambia la implementación de `IFileStorageService` y la generación de URLs).
+
+**Configuración de `.gitignore` y Docker**
+*   Añadir `uploads/` a `.gitignore` (los archivos subidos no se versionan).
+*   Añadir un volumen `uploads` en `docker-compose.yml` para persistir las imágenes entre reinicios del contenedor: `volumes: ["./uploads:/app/uploads"]`.
+*   Actualizar `.env.example` con `UPLOAD_MAX_SIZE_MB=2` (documentativo; el límite se aplica en código).
+
+**Dependencias nuevas (npm)**
+*   `sharp` — procesamiento y redimensionamiento de imágenes. Sin dependencias nativas problemáticas en la mayoría de plataformas.
+*   `file-type` — detección de MIME type real por magic bytes del buffer, evitando confiar en la extensión o en el header `Content-Type` del cliente.
+
+**Testing (DoD de la sub-fase)**
+*   **Unit tests** de `ImageProcessingService`: verifica que un buffer PNG/JPEG de 1024×768 se convierte a WebP ≤512×512 y que el tamaño de salida es menor que el original.
+*   **Unit tests** de cada use-case (`UploadClubLogoUseCase`, etc.): mock de `IFileStorageService` e `ImageProcessingService`, verificación de que se llama a `optimize()` y `upload()` en el orden correcto, y que `updateLogoUrl` recibe la URL esperada.
+*   **Unit tests** de validación de formato: el use-case rechaza un buffer GIF o BMP con `BadRequestException`.
+*   **Unit tests** de `DeleteClubLogoUseCase`: verifica que `FileStorageService.delete()` se invoca y el campo se pone a `null`.
+*   **E2E tests** (`test/images.e2e-spec.ts`):
+    *   Subida exitosa de un logo PNG al club → respuesta incluye `logoUrl` no nulo → `GET /clubs/:id` devuelve la URL → petición HTTP a la URL sirve una imagen WebP válida.
+    *   Subida de archivo >2MB → `413 Payload Too Large`.
+    *   Subida de archivo con formato no soportado (ej. `.txt`, `.gif`) → `400 Bad Request`.
+    *   Subida de logo a equipo por `CLUB_ADMIN` del club correcto → `201`. Intento desde `CLUB_ADMIN` de otro club → `403 Forbidden`.
+    *   Eliminación de logo → `logoUrl` se resetea a `null` en el GET posterior.
+    *   Subida de nueva imagen sobreescribe la anterior (solo un archivo por entidad).
+*   **Cobertura**: ≥80% en `ImageProcessingService`, use-cases de upload/delete y validación de formato.
+
+**Resultado**: Clubs, equipos y jugadores pueden tener un logo o foto asociada, subida de forma segura con validación de tipo y tamaño, optimizada automáticamente a WebP 512×512 para consumo eficiente desde la app móvil. El contrato de almacenamiento (`IFileStorageService`) está preparado para migrar a almacenamiento cloud sin tocar la lógica de negocio.
+
 ---
 
 ## 🔐 Fase 2: Autenticación, Roles y Multi-tenancy

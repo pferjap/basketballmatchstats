@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -12,6 +12,8 @@ import { LoginDto } from '../dtos/login.dto';
 
 @Injectable()
 export class LoginUseCase {
+  private readonly logger = new Logger(LoginUseCase.name);
+
   constructor(
     @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
@@ -23,12 +25,16 @@ export class LoginUseCase {
     const user = await this.userRepository.findByEmail(dto.email);
 
     if (!user) {
+      this.logger.warn(`Login failed: no user found for email="${dto.email}"`);
       throw new InvalidCredentialsException();
     }
 
     const passwordValid = await bcrypt.compare(dto.password, user.passwordHash);
 
     if (!passwordValid) {
+      this.logger.warn(
+        `Login failed: password mismatch for email="${dto.email}"`,
+      );
       throw new InvalidCredentialsException();
     }
 

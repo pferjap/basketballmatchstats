@@ -14,6 +14,9 @@ export class MatchMapper {
       finishedAt: entity.finishedAt ? entity.finishedAt.toISOString() : null,
       period: entity.period,
       gameClock: entity.gameClock,
+      totalPeriods: entity.totalPeriods,
+      periodDurationMinutes: entity.periodDurationMinutes,
+      suspensionReason: entity.suspensionReason,
       createdAt: entity.createdAt.toISOString(),
       updatedAt: entity.updatedAt.toISOString(),
     };

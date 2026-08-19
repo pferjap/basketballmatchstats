@@ -101,21 +101,27 @@ enum MatchStatus {
   SCHEDULED
   ONGOING
   FINISHED
+  CANCELLED
+  POSTPONED
+  SUSPENDED
 }
 
 model Match {
-  id          String      @id @default(uuid()) @db.Uuid
-  clubId      String      @db.Uuid
-  homeTeamId  String      @db.Uuid
-  awayTeamId  String      @db.Uuid
-  status      MatchStatus @default(SCHEDULED)
-  scheduledAt DateTime
-  startedAt   DateTime?
-  finishedAt  DateTime?
-  period      Int         @default(0)
-  gameClock   String      @default("00:00")
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id                   String      @id @default(uuid()) @db.Uuid
+  clubId               String      @db.Uuid
+  homeTeamId           String      @db.Uuid
+  awayTeamId           String      @db.Uuid
+  status               MatchStatus @default(SCHEDULED)
+  scheduledAt          DateTime
+  startedAt            DateTime?
+  finishedAt           DateTime?
+  period               Int         @default(0)
+  gameClock            String      @default("00:00")
+  totalPeriods         Int         @default(4)
+  periodDurationMinutes Int        @default(10)
+  suspensionReason     String?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
 
   club     Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
   homeTeam Team @relation("homeMatches", fields: [homeTeamId], references: [id], onDelete: Restrict)

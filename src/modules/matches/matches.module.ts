@@ -7,6 +7,9 @@ import { UpdateMatchUseCase } from './application/use-cases/update-match.use-cas
 import { ListMatchesUseCase } from './application/use-cases/list-matches.use-case';
 import { StartMatchUseCase } from './application/use-cases/start-match.use-case';
 import { FinishMatchUseCase } from './application/use-cases/finish-match.use-case';
+import { CancelMatchUseCase } from './application/use-cases/cancel-match.use-case';
+import { PostponeMatchUseCase } from './application/use-cases/postpone-match.use-case';
+import { SuspendMatchUseCase } from './application/use-cases/suspend-match.use-case';
 import { MatchController } from './infrastructure/controllers/match.controller';
 import { PrismaMatchRepository } from './infrastructure/repositories/prisma-match.repository';
 
@@ -19,6 +22,9 @@ import { PrismaMatchRepository } from './infrastructure/repositories/prisma-matc
     ListMatchesUseCase,
     StartMatchUseCase,
     FinishMatchUseCase,
+    CancelMatchUseCase,
+    PostponeMatchUseCase,
+    SuspendMatchUseCase,
     DeleteMatchUseCase,
     { provide: MATCH_REPOSITORY, useClass: PrismaMatchRepository },
   ],

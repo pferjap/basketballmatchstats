@@ -20,6 +20,8 @@ import type { JwtPayload } from '../../../auth/infrastructure/strategies/jwt.str
 import { MatchStatus } from '../../domain/enums/match-status.enum';
 import { CreateMatchDto } from '../../application/dtos/create-match.dto';
 import { UpdateMatchDto } from '../../application/dtos/update-match.dto';
+import { PostponeMatchDto } from '../../application/dtos/postpone-match.dto';
+import { SuspendMatchDto } from '../../application/dtos/suspend-match.dto';
 import { ListMatchesQueryDto } from '../../application/dtos/list-matches-query.dto';
 import { MatchResponseDto } from '../../application/dtos/match-response.dto';
 import { MatchMapper } from '../mappers/match.mapper';
@@ -30,6 +32,9 @@ import { UpdateMatchUseCase } from '../../application/use-cases/update-match.use
 import { ListMatchesUseCase } from '../../application/use-cases/list-matches.use-case';
 import { StartMatchUseCase } from '../../application/use-cases/start-match.use-case';
 import { FinishMatchUseCase } from '../../application/use-cases/finish-match.use-case';
+import { CancelMatchUseCase } from '../../application/use-cases/cancel-match.use-case';
+import { PostponeMatchUseCase } from '../../application/use-cases/postpone-match.use-case';
+import { SuspendMatchUseCase } from '../../application/use-cases/suspend-match.use-case';
 
 @Controller('matches')
 export class MatchController {
@@ -40,6 +45,9 @@ export class MatchController {
     private readonly listMatchesUseCase: ListMatchesUseCase,
     private readonly startMatchUseCase: StartMatchUseCase,
     private readonly finishMatchUseCase: FinishMatchUseCase,
+    private readonly cancelMatchUseCase: CancelMatchUseCase,
+    private readonly postponeMatchUseCase: PostponeMatchUseCase,
+    private readonly suspendMatchUseCase: SuspendMatchUseCase,
     private readonly deleteMatchUseCase: DeleteMatchUseCase,
   ) {}
 
@@ -132,6 +140,38 @@ export class MatchController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<MatchResponseDto> {
     const match = await this.finishMatchUseCase.execute(id);
+    return MatchMapper.toResponse(match);
+  }
+
+  @Patch(':id/cancel')
+  @Roles(UserRole.SUPER_ADMIN)
+  @TenantCheck('match')
+  async cancel(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<MatchResponseDto> {
+    const match = await this.cancelMatchUseCase.execute(id);
+    return MatchMapper.toResponse(match);
+  }
+
+  @Patch(':id/postpone')
+  @Roles(UserRole.SUPER_ADMIN)
+  @TenantCheck('match')
+  async postpone(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: PostponeMatchDto,
+  ): Promise<MatchResponseDto> {
+    const match = await this.postponeMatchUseCase.execute(id, dto);
+    return MatchMapper.toResponse(match);
+  }
+
+  @Patch(':id/suspend')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.CLUB_ADMIN, UserRole.COACH)
+  @TenantCheck('match')
+  async suspend(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SuspendMatchDto,
+  ): Promise<MatchResponseDto> {
+    const match = await this.suspendMatchUseCase.execute(id, dto);
     return MatchMapper.toResponse(match);
   }
 

@@ -25,6 +25,9 @@ interface MatchResponse {
   finishedAt: string | null;
   period: number;
   gameClock: string;
+  totalPeriods: number;
+  periodDurationMinutes: number;
+  suspensionReason: string | null;
 }
 
 describe('Matches (E2E)', () => {
@@ -146,7 +149,42 @@ describe('Matches (E2E)', () => {
       expect(body.data.homeTeamId).toBe(teamA1Id);
       expect(body.data.awayTeamId).toBe(teamA2Id);
       expect(body.data.period).toBe(0);
+      expect(body.data.totalPeriods).toBe(4);
+      expect(body.data.periodDurationMinutes).toBe(10);
       matchId = body.data.id;
+    });
+
+    it('should create a match with custom quarter configuration', async () => {
+      const res: SupertestResponse = await request(httpServer)
+        .post('/matches')
+        .set('Authorization', `Bearer ${clubAAdminToken}`)
+        .send({
+          clubId: clubAId,
+          homeTeamId: teamA1Id,
+          awayTeamId: teamA2Id,
+          scheduledAt: '2026-10-01T20:00:00Z',
+          totalPeriods: 2,
+          periodDurationMinutes: 20,
+        })
+        .expect(201);
+
+      const body = res.body as ApiEnvelope<MatchResponse>;
+      expect(body.data.totalPeriods).toBe(2);
+      expect(body.data.periodDurationMinutes).toBe(20);
+    });
+
+    it('should reject invalid quarter configuration', async () => {
+      await request(httpServer)
+        .post('/matches')
+        .set('Authorization', `Bearer ${clubAAdminToken}`)
+        .send({
+          clubId: clubAId,
+          homeTeamId: teamA1Id,
+          awayTeamId: teamA2Id,
+          scheduledAt: '2026-10-01T21:00:00Z',
+          totalPeriods: 99,
+        })
+        .expect(400);
     });
 
     it('should reject VIEWER creating a match', async () => {
@@ -392,6 +430,126 @@ describe('Matches (E2E)', () => {
         .patch(`/matches/${newMatchId}/finish`)
         .set('Authorization', `Bearer ${clubAAdminToken}`)
         .expect(409);
+    });
+  });
+
+  describe('Lifecycle: cancel / postpone / suspend', () => {
+    async function createScheduledMatch(
+      scheduledAt: string,
+    ): Promise<string> {
+      const createRes: SupertestResponse = await request(httpServer)
+        .post('/matches')
+        .set('Authorization', `Bearer ${clubAAdminToken}`)
+        .send({
+          clubId: clubAId,
+          homeTeamId: teamA1Id,
+          awayTeamId: teamA2Id,
+          scheduledAt,
+        });
+      return (createRes.body as ApiEnvelope<MatchResponse>).data.id;
+    }
+
+    async function startMatch(id: string): Promise<void> {
+      await request(httpServer)
+        .patch(`/matches/${id}/start`)
+        .set('Authorization', `Bearer ${clubAAdminToken}`)
+        .expect(200);
+    }
+
+    it('should cancel an ONGOING match (SUPER_ADMIN)', async () => {
+      const id = await createScheduledMatch('2027-01-01T18:00:00Z');
+      await startMatch(id);
+
+      const res: SupertestResponse = await request(httpServer)
+        .patch(`/matches/${id}/cancel`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      const body = res.body as ApiEnvelope<MatchResponse>;
+      expect(body.data.status).toBe('CANCELLED');
+    });
+
+    it('should cancel a SCHEDULED match (SUPER_ADMIN)', async () => {
+      const id = await createScheduledMatch('2027-01-02T18:00:00Z');
+
+      const res: SupertestResponse = await request(httpServer)
+        .patch(`/matches/${id}/cancel`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect((res.body as ApiEnvelope<MatchResponse>).data.status).toBe(
+        'CANCELLED',
+      );
+    });
+
+    it('should deny CLUB_ADMIN from cancelling', async () => {
+      const id = await createScheduledMatch('2027-01-03T18:00:00Z');
+
+      await request(httpServer)
+        .patch(`/matches/${id}/cancel`)
+        .set('Authorization', `Bearer ${clubAAdminToken}`)
+        .expect(403);
+    });
+
+    it('should postpone a match with a new schedule (SUPER_ADMIN)', async () => {
+      const id = await createScheduledMatch('2027-02-01T18:00:00Z');
+
+      const res: SupertestResponse = await request(httpServer)
+        .patch(`/matches/${id}/postpone`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({ scheduledAt: '2027-03-01T18:00:00Z' })
+        .expect(200);
+
+      const body = res.body as ApiEnvelope<MatchResponse>;
+      expect(body.data.status).toBe('POSTPONED');
+      expect(body.data.scheduledAt).toBe('2027-03-01T18:00:00.000Z');
+    });
+
+    it('should suspend an ONGOING match with a reason (annotator)', async () => {
+      const id = await createScheduledMatch('2027-04-01T18:00:00Z');
+      await startMatch(id);
+
+      const res: SupertestResponse = await request(httpServer)
+        .patch(`/matches/${id}/suspend`)
+        .set('Authorization', `Bearer ${clubAAdminToken}`)
+        .send({ reason: 'Lluvia intensa' })
+        .expect(200);
+
+      const body = res.body as ApiEnvelope<MatchResponse>;
+      expect(body.data.status).toBe('SUSPENDED');
+      expect(body.data.suspensionReason).toBe('Lluvia intensa');
+    });
+
+    it('should reject suspending without a reason', async () => {
+      const id = await createScheduledMatch('2027-04-02T18:00:00Z');
+      await startMatch(id);
+
+      await request(httpServer)
+        .patch(`/matches/${id}/suspend`)
+        .set('Authorization', `Bearer ${clubAAdminToken}`)
+        .send({})
+        .expect(400);
+    });
+
+    it('should reject suspending a SCHEDULED match', async () => {
+      const id = await createScheduledMatch('2027-04-03T18:00:00Z');
+
+      await request(httpServer)
+        .patch(`/matches/${id}/suspend`)
+        .set('Authorization', `Bearer ${clubAAdminToken}`)
+        .send({ reason: 'No procede' })
+        .expect(409);
+    });
+
+    it('should deny another clubs admin from suspending', async () => {
+      const id = await createScheduledMatch('2027-04-04T18:00:00Z');
+      await startMatch(id);
+
+      await request(httpServer)
+        .patch(`/matches/${id}/suspend`)
+        .set('Authorization', `Bearer ${clubBAdminToken}`)
+        .send({ reason: 'Cross-club' })
+        .expect(403);
     });
   });
 

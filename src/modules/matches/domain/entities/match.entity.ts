@@ -11,6 +11,9 @@ export interface MatchProperties {
   finishedAt: Date | null;
   period: number;
   gameClock: string;
+  totalPeriods: number;
+  periodDurationMinutes: number;
+  suspensionReason: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,6 +29,9 @@ export class MatchEntity {
   readonly finishedAt: Date | null;
   readonly period: number;
   readonly gameClock: string;
+  readonly totalPeriods: number;
+  readonly periodDurationMinutes: number;
+  readonly suspensionReason: string | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 
@@ -40,6 +46,9 @@ export class MatchEntity {
     this.finishedAt = properties.finishedAt;
     this.period = properties.period;
     this.gameClock = properties.gameClock;
+    this.totalPeriods = properties.totalPeriods;
+    this.periodDurationMinutes = properties.periodDurationMinutes;
+    this.suspensionReason = properties.suspensionReason;
     this.createdAt = properties.createdAt;
     this.updatedAt = properties.updatedAt;
   }
@@ -49,6 +58,26 @@ export class MatchEntity {
   }
 
   canFinish(): boolean {
+    return this.status === MatchStatus.ONGOING;
+  }
+
+  canCancel(): boolean {
+    return (
+      this.status === MatchStatus.SCHEDULED ||
+      this.status === MatchStatus.ONGOING ||
+      this.status === MatchStatus.SUSPENDED ||
+      this.status === MatchStatus.POSTPONED
+    );
+  }
+
+  canPostpone(): boolean {
+    return (
+      this.status === MatchStatus.SCHEDULED ||
+      this.status === MatchStatus.ONGOING
+    );
+  }
+
+  canSuspend(): boolean {
     return this.status === MatchStatus.ONGOING;
   }
 }

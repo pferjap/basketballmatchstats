@@ -12,6 +12,8 @@ export interface CreateMatchData {
   homeTeamId: string;
   awayTeamId: string;
   scheduledAt: Date;
+  totalPeriods?: number;
+  periodDurationMinutes?: number;
 }
 
 export interface UpdateMatchData {
@@ -23,6 +25,9 @@ export interface UpdateMatchData {
   homeTeamId?: string;
   awayTeamId?: string;
   scheduledAt?: Date;
+  totalPeriods?: number;
+  periodDurationMinutes?: number;
+  suspensionReason?: string | null;
 }
 
 export interface IMatchRepository {

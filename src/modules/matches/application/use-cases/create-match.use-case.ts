@@ -17,6 +17,10 @@ export class CreateMatchUseCase {
       homeTeamId: dto.homeTeamId,
       awayTeamId: dto.awayTeamId,
       scheduledAt: new Date(dto.scheduledAt),
+      ...(dto.totalPeriods !== undefined && { totalPeriods: dto.totalPeriods }),
+      ...(dto.periodDurationMinutes !== undefined && {
+        periodDurationMinutes: dto.periodDurationMinutes,
+      }),
     });
   }
 }

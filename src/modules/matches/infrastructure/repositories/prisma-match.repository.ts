@@ -20,6 +20,12 @@ export class PrismaMatchRepository implements IMatchRepository {
         homeTeamId: data.homeTeamId,
         awayTeamId: data.awayTeamId,
         scheduledAt: data.scheduledAt,
+        ...(data.totalPeriods !== undefined && {
+          totalPeriods: data.totalPeriods,
+        }),
+        ...(data.periodDurationMinutes !== undefined && {
+          periodDurationMinutes: data.periodDurationMinutes,
+        }),
       },
     });
     return this.toEntity(record);
@@ -58,6 +64,15 @@ export class PrismaMatchRepository implements IMatchRepository {
         ...(data.homeTeamId && { homeTeamId: data.homeTeamId }),
         ...(data.awayTeamId && { awayTeamId: data.awayTeamId }),
         ...(data.scheduledAt && { scheduledAt: data.scheduledAt }),
+        ...(data.totalPeriods !== undefined && {
+          totalPeriods: data.totalPeriods,
+        }),
+        ...(data.periodDurationMinutes !== undefined && {
+          periodDurationMinutes: data.periodDurationMinutes,
+        }),
+        ...(data.suspensionReason !== undefined && {
+          suspensionReason: data.suspensionReason,
+        }),
       },
     });
     return this.toEntity(record);
@@ -85,6 +100,9 @@ export class PrismaMatchRepository implements IMatchRepository {
     finishedAt: Date | null;
     period: number;
     gameClock: string;
+    totalPeriods: number;
+    periodDurationMinutes: number;
+    suspensionReason: string | null;
     createdAt: Date;
     updatedAt: Date;
   }): MatchEntity {
@@ -99,6 +117,9 @@ export class PrismaMatchRepository implements IMatchRepository {
       finishedAt: record.finishedAt,
       period: record.period,
       gameClock: record.gameClock,
+      totalPeriods: record.totalPeriods,
+      periodDurationMinutes: record.periodDurationMinutes,
+      suspensionReason: record.suspensionReason,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     });

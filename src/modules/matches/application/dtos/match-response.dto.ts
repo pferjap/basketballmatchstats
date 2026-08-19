@@ -11,6 +11,9 @@ export interface MatchResponseDto {
   finishedAt: string | null;
   period: number;
   gameClock: string;
+  totalPeriods: number;
+  periodDurationMinutes: number;
+  suspensionReason: string | null;
   createdAt: string;
   updatedAt: string;
 }
